@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 def solve_error(filename):
-    file_name = os.path.join(os.path.dirname(__file__), os.path.join('sampleDATA', filename))
+    file_name = os.path.join(os.path.dirname(__file__), os.path.join('C:\\Users\\ujwal\\OneDrive\\Documents\\CONDA_VS_files\\PythonBasics_and_Modules\\openCV\\sampleDATA', filename))
     assert os.path.exists(file_name)
     return file_name
 
