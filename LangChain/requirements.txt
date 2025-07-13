@@ -3,3 +3,4 @@ langchain-community
 langchain-google-genai
 python-dotenv
 ipykernal
+pydantic
