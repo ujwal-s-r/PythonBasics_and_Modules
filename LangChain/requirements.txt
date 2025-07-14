@@ -7,3 +7,4 @@ ipykernal
 pydantic
 beautifulsoup4
 pypdf
+chromadb
