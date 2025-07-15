@@ -14,6 +14,6 @@ try:
         google_api_key=google_api_key,
         temperature=0.2
         )
-    print("Shared LLM initialized successfully.")
+    print("utils/llm_config.py: Shared LLM initialized successfully.")
 except:
     raise ValueError("Failed to initialize shared LLM. Please check your GOOGLE_API_KEY and internet connection.")
