@@ -18,6 +18,7 @@ def _get_coding_agent_executor():
         """),
         ("human", "Overall Requirement: {overall_requirement}\n\n"
             "Current Phase Objectives: {phase_objectives}\n\n"
+            "previous code:\n```python\n{previous_code}\n```\n\n"
             "{feedback}"), # This placeholder will be filled by the Manager if there's review feedback
         MessagesPlaceholder(variable_name="agent_scratchpad"), # For agent's internal thoughts/tool use
     ])
@@ -25,8 +26,7 @@ def _get_coding_agent_executor():
     coding_agent=create_tool_calling_agent(
         llm=shared_llm,
         tools=general_tools,
-        prompt=coding_prompt,
-        handle_parsing_errors=True,
+        prompt=coding_prompt
     )
     
     coding_agent_executor = AgentExecutor(

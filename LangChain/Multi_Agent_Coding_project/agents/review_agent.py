@@ -14,14 +14,14 @@ def get_review_agent_executor():
         If the code runs without errors and appears functionally correct based on the original requirement, respond ONLY with the word "NULL".
         """),
         ("human", "Overall Requirement: {overall_requirement}\n\n"
-            "Code to Review:\n```python\n{code}\n```"),
+            "Code to Review:\n```python\n{code}\n```"
+            "objectives for this phase: {phase_objectives}\n\n"),
         MessagesPlaceholder(variable_name="agent_scratchpad"), # For agent's internal thoughts
     ])
     review_agent=create_tool_calling_agent(
         llm=shared_llm,
         tools=general_tools,
-        prompt=review_prompt,
-        handle_parsing_errors=True,
+        prompt=review_prompt
     )
     review_agent_executor= AgentExecutor(
         agent=review_agent,
