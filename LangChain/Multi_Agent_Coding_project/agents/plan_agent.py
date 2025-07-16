@@ -1,5 +1,5 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import JsonOutputParser
 from utils.llm_config import shared_llm
 
 def get_plan_agent_chain():
@@ -19,6 +19,6 @@ def get_plan_agent_chain():
         ("human", "Requirement: {requirement}"),
         ]
     )
-    plan_generation_chain= plant_prompt | shared_llm | StrOutputParser()
+    plan_generation_chain= plant_prompt | shared_llm | JsonOutputParser()
     print("agents/plan_agent.py: Plan Agent Chain configured successfully.")
     return plan_generation_chain
