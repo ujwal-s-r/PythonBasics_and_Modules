@@ -25,8 +25,9 @@ def run_code_development_project(user_requirement: str,max_coding_retries_per_ph
     print("Manager agent requesting plan")
     development_plan=[]
     try:
-        plan_raw=plan_agent_chain.invoke({"requirement": user_requirement})
-        development_plan = json.loads(plan_raw["plan"])
+        """plan_raw=plan_agent_chain.invoke({"requirement": user_requirement})
+        development_plan = json.loads(plan_raw)"""
+        development_plan=plan_agent_chain.invoke({"requirement": user_requirement})
         print("Manager agent received plan:")
         for phase in development_plan:
             print(f"phase number{phase['phase_number']}: {phase['description']}")
@@ -51,8 +52,8 @@ def run_code_development_project(user_requirement: str,max_coding_retries_per_ph
         while retries< max_coding_retries_per_phase:
             try:
                 coding_input={
-                    "overall_requirements": user_requirement,
-                    "phase_description": phase_description,
+                    "overall_requirement": user_requirement,
+                    "phase_objectives": phase_description,
                     "feedback":feedback_to_coder,
                     "previous_code": "\n".join(accumulated_code) if accumulated_code else "",
                 }

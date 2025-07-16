@@ -12,9 +12,9 @@ def get_plan_agent_chain():
             Respond in a clear, concise JSON array format, where each element is an object with 'phase_number' (integer) and 'description' (string).
         Example:
         [
-        {"phase_number": 1, "description": "Setup project, define main function, handle basic input parsing."},
-        {"phase_number": 2, "description": "Implement core logic for feature X."},
-        {"phase_number": 3, "description": "Add error handling and edge case management."}
+        {{"phase_number": 1, "description": "Setup project, define main function, handle basic input parsing."}},
+        {{"phase_number": 2, "description": "Implement core logic for feature X."}},
+        {{"phase_number": 3, "description": "Add error handling and edge case management."}}
         ]"""),
         ("human", "Requirement: {requirement}"),
         ]
