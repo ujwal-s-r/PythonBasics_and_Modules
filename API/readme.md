@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # API Fundamentals with FastAPI
 
 This guide provides a comprehensive overview of the core concepts for building modern, robust APIs, focusing on REST principles and their practical implementation using the FastAPI framework.
@@ -521,3 +522,8 @@ A simple real-time chat example using WebSockets is in the `Sockets/` directory.
 
 2.  **Access the Chat Client**:
     Open your browser and navigate to [http://12.0.0.1:8000/](http://127.0.0.1:8000/). You will see a simple HTML page where you can send and receive messages in real-
+=======
+alembic init alembic
+alembic revision --autogenerate -m "Create items table"
+alembic upgrade head
+>>>>>>> b8a759b11ff777e5ae0265945f580940e52dcfd0

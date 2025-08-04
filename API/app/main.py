@@ -10,6 +10,14 @@ from .database import async_sessionmaker
 # I am adding the `read_items_endpoint` which was part of our earlier lessons
 # but was not explicitly included in the final CRUD lesson, for completeness.
 
+# Create tables (For development only. In production, use Alembic.)
+# This is a temporary measure to get our app working without migrations first.
+# We will replace this with Alembic in the next lesson.
+"""async def create_db_and_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.create_all)"""
+
+
 app = FastAPI()
 
 # Dependency to get a DB session
