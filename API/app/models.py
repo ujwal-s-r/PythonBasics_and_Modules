@@ -11,3 +11,4 @@ class Item(Base):
     price = Column(Float)
     is_offer = Column(Boolean, default=False)
     description = Column(String, nullable=True)
+    owner = Column(String, nullable=True) #added to test the migration

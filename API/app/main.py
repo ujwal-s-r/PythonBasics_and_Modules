@@ -9,11 +9,11 @@ from .database import async_sessionmaker, engine
 # Create tables (For development only. In production, use Alembic.)
 # This is a temporary measure to get our app working without migrations first.
 # We will replace this with Alembic in the next lesson.
-async def create_db_and_tables():
+"""async def create_db_and_tables():
     async with engine.begin() as conn:
-        await conn.run_sync(models.Base.metadata.create_all)
+        await conn.run_sync(models.Base.metadata.create_all)"""
 
-app = FastAPI(on_startup=[create_db_and_tables])
+app = FastAPI()
 
 # Dependency to get a DB session
 async def get_db():
