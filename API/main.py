@@ -6,9 +6,24 @@ from fastapi import HTTPException
 from customException import ItemNotFoundError
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    # This sets the Access-Control-Allow-Origin header in the preflight response.
+    allow_origins=["http://my-webapp.com", "https://my-webapp.com"],
+    
+    # This allows requests with cookies or Authorization headers.
+    allow_credentials=True,
+    
+    # This sets the Access-Control-Allow-Methods header.
+    allow_methods=["*"], # Allows all standard methods
+    
+    # This sets the Access-Control-Allow-Headers header.
+    allow_headers=["*"], # Allows all headers
+)
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -35,9 +50,9 @@ class Item(BaseModel):
     
 @app.post("/items/", response_model=ItemResponse) #filter and send in ItemResponse foramt only  
 async def create_item(item:imporovedItem):
-    item_dict=imporovedItem.model_dump()
-    if imporovedItem.is_offer:
-        item_dict.update({"offer_message":f"item {item.name} running on a offer"})
+    item_dict=item.model_dump()
+    # Add a required id field for the response
+    item_dict["id"] = 1  # You might want to generate this properly in a real app
     return item_dict
     
 items_db = {
