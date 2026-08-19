@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch MHA Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #0f111a;
+            --card-bg: #1e2130;
+            --text-main: #e6e6e6;
+            --text-dim: #8f93a2;
+            --accent: #7c4dff;
+            --accent-hover: #651fff;
+            --q-color: #ff4081;
+            --k-color: #00e5ff;
+            --v-color: #76ff03;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, monospace;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+        .subtitle { color: var(--text-dim); font-size: 0.9rem; }
+
+        /* Controls */
+        .controls {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            height: fit-content;
+        }
+
+        .control-group { margin-bottom: 20px; }
+        label { display: block; color: var(--text-dim); margin-bottom: 5px; font-size: 0.85rem; }
+        
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            background: #0f111a;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        button:hover { background: var(--accent-hover); }
+
+        .head-selector {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .head-btn {
+            background: #333;
+            flex: 1;
+            padding: 5px;
+            font-size: 0.8rem;
+        }
+        .head-btn.active { background: var(--accent); }
+
+        /* Visualization Area */
+        .viz-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .pipeline-stage {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .stage-title {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            border-left: 3px solid var(--accent);
+            padding-left: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .math-ref { font-family: monospace; color: var(--text-dim); font-size: 0.8rem; background: #000; padding: 2px 6px; border-radius: 4px;}
+
+        /* Matrix Visualization */
+        .matrix-container {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .matrix-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .tensor-grid {
+            display: grid;
+            gap: 2px;
+            background: #000;
+            padding: 2px;
+            border: 1px solid #444;
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            background: #2a2a2a;
+            font-size: 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: transparent; /* Text hidden by default, shown on hover/mode */
+            transition: 0.1s;
+            cursor: crosshair;
+            position: relative;
+        }
+
+        .cell:hover {
+            border: 1px solid white;
+            z-index: 10;
+        }
+
+        /* Highlight classes */
+        .highlight-q { border: 2px solid var(--q-color) !important; z-index: 5; }
+        .highlight-k { border: 2px solid var(--k-color) !important; z-index: 5; }
+        .highlight-attn { border: 2px solid yellow !important; z-index: 5; }
+
+        .matrix-label {
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            font-weight: bold;
+        }
+
+        .op-symbol { font-size: 1.5rem; color: var(--text-dim); font-weight: bold; }
+
+        /* Tooltip */
+        #tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.95);
+            border: 1px solid var(--accent);
+            padding: 10px;
+            border-radius: 4px;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            font-size: 0.8rem;
+            max-width: 250px;
+        }
+        #tooltip code { color: var(--accent); display: block; margin-bottom: 4px; }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>PyTorch Multi-Head Attention Lab</h1>
+        <div class="subtitle">Interactive Dissection for Researchers</div>
+    </div>
+    <div style="text-align: right">
+        <a href="#" style="color: var(--text-dim); text-decoration: none; font-size: 0.8rem">v1.0.0</a>
+    </div>
+</header>
+
+<div class="container">
+    <div class="controls">
+        <div class="control-group">
+            <label>Input Sequence (Text)</label>
+            <input type="text" id="inputText" value="learning pytorch is fun">
+        </div>
+        
+        <div class="control-group">
+            <label>Embedding Dim (d_model)</label>
+            <select id="dModel">
+                <option value="4">4 (Toy)</option>
+                <option value="8" selected>8 (Small)</option>
+                <option value="16">16 (Medium)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Number of Heads</label>
+            <select id="numHeads">
+                <option value="1">1 Head</option>
+                <option value="2" selected>2 Heads</option>
+                <option value="4">4 Heads</option>
+            </select>
+        </div>
+
+        <button onclick="runSimulation()">Initialize & Run Forward Pass</button>
+
+        <hr style="border-color: #333; margin: 20px 0;">
+
+        <div class="control-group">
+            <label>Active Head Inspection</label>
+            <div class="head-selector" id="headSelector">
+                </div>
+            <p style="font-size: 0.75rem; color: #666; margin-top: 5px;">
+                Switch heads to see different attention patterns.
+            </p>
+        </div>
+
+        <div class="legend">
+            <div><span class="dot" style="background:var(--q-color)"></span>Query</div>
+            <div><span class="dot" style="background:var(--k-color)"></span>Key</div>
+            <div><span class="dot" style="background:var(--v-color)"></span>Value</div>
+        </div>
+    </div>
+
+    <div class="viz-area" id="vizArea">
+        
+        <div class="pipeline-stage">
+            <div class="stage-title">
+                1. Linear Projections (Split by Head)
+                <span class="math-ref">Q = XW_q, K = XW_k, V = XW_v</span>
+            </div>
+            <div class="matrix-container" id="qkvContainer">
+                </div>
+            <p style="font-size: 0.8rem; color: #888; margin-top: 10px">
+                *Hover over the Attention Matrix below to see which Q and K rows interact.
+            </p>
+        </div>
+
+        <div class="pipeline-stage">
+            <div class="stage-title">
+                2. Attention Scores (The Heatmap)
+                <span class="math-ref">softmax(QK^T / sqrt(d_k))</span>
+            </div>
+            <div class="matrix-container">
+                <div class="matrix-wrapper">
+                    <div class="matrix-label">Attention Matrix (Weights)</div>
+                    <div id="attnMatrix"></div>
+                </div>
+            </div>
+            <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-dim)" id="attnExplanation">
+                Hover over a cell to dissect the dot product.
+            </div>
+        </div>
+
+        <div class="pipeline-stage">
+            <div class="stage-title">
+                3. Weighted Sum (Contextualized Embeddings)
+                <span class="math-ref">Output = Attention * V</span>
+            </div>
+            <div class="matrix-container" id="outputContainer">
+                </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+/**
+ * MINI-TENSOR LIBRARY FOR EDUCATIONAL PURPOSES
+ * Allows us to run the math in the browser just like PyTorch
+ */
+class Tensor {
+    constructor(data, shape) {
+        this.data = data; // Flat array or array of arrays
+        this.shape = shape;
+    }
+
+    static randn(rows, cols) {
+        let data = [];
+        for(let i=0; i<rows; i++) {
+            let row = [];
+            for(let j=0; j<cols; j++) row.push((Math.random() * 2 - 1).toFixed(4));
+            data.push(row);
+        }
+        return new Tensor(data, [rows, cols]);
+    }
+
+    // Matrix Multiplication (2D)
+    matmul(other) {
+        const [r1, c1] = this.shape;
+        const [r2, c2] = other.shape;
+        if (c1 !== r2) throw new Error(`Shape mismatch: ${c1} != ${r2}`);
+
+        let result = [];
+        for (let i = 0; i < r1; i++) {
+            let row = [];
+            for (let j = 0; j < c2; j++) {
+                let sum = 0;
+                for (let k = 0; k < c1; k++) {
+                    sum += this.data[i][k] * other.data[k][j];
+                }
+                row.push(sum);
+            }
+            result.push(row);
+        }
+        return new Tensor(result, [r1, c2]);
+    }
+
+    transpose() {
+        const [rows, cols] = this.shape;
+        let result = [];
+        for(let j=0; j<cols; j++) {
+            let row = [];
+            for(let i=0; i<rows; i++) {
+                row.push(this.data[i][j]);
+            }
+            result.push(row);
+        }
+        return new Tensor(result, [cols, rows]);
+    }
+
+    scale(factor) {
+        const newData = this.data.map(row => row.map(val => val * factor));
+        return new Tensor(newData, this.shape);
+    }
+
+    softmax() {
+        const newData = this.data.map(row => {
+            const max = Math.max(...row);
+            const exps = row.map(v => Math.exp(v - max));
+            const sum = exps.reduce((a, b) => a + b, 0);
+            return exps.map(v => v / sum);
+        });
+        return new Tensor(newData, this.shape);
+    }
+}
+
+// ---------------------------------------------------------
+// SIMULATION STATE & LOGIC
+// ---------------------------------------------------------
+
+let state = {
+    tokens: [],
+    d_model: 8,
+    heads: 2,
+    head_dim: 4,
+    currentHead: 0,
+    weights: {}, // Simulated Wq, Wk, Wv
+    tensors: {}  // Stores Q, K, V, Attention, Output per head
+};
+
+function initWeights() {
+    // We simulate the linear projection already split by heads for simplicity
+    // in PyTorch: self.q_proj = nn.Linear(d_model, d_model)
+    // Here we generate random projections
+    state.weights.Wq = Tensor.randn(state.d_model, state.d_model);
+    state.weights.Wk = Tensor.randn(state.d_model, state.d_model);
+    state.weights.Wv = Tensor.randn(state.d_model, state.d_model);
+}
+
+function runSimulation() {
+    // 1. Parse Inputs
+    const text = document.getElementById('inputText').value;
+    state.tokens = text.trim().split(/\s+/);
+    state.d_model = parseInt(document.getElementById('dModel').value);
+    state.heads = parseInt(document.getElementById('numHeads').value);
+    state.head_dim = state.d_model / state.heads;
+
+    if (state.d_model % state.heads !== 0) {
+        alert("Embedding Dim must be divisible by Number of Heads");
+        return;
+    }
+
+    // 2. Generate Input Embeddings (X)
+    // Shape: [SeqLen, d_model]
+    const seqLen = state.tokens.length;
+    state.tensors.X = Tensor.randn(seqLen, state.d_model);
+
+    // 3. Initialize Random Weights if first run or config change
+    initWeights();
+
+    // 4. Compute Forward Pass (Stored Per Head)
+    state.perHeadData = [];
+
+    for(let h=0; h<state.heads; h++) {
+        // In real PyTorch, we project once then reshape. 
+        // Here, for visualization clarity, we simulate 'slicing' the weights
+        // to get the Q, K, V for this specific head.
+        
+        // Simulating: Q_h = X * Wq_h
+        // We just create random Q, K, V for the head to demonstrate the math flow
+        // (Making it mathematically consistent with one big matrix is too complex for this single file UI)
+        let Q = Tensor.randn(seqLen, state.head_dim);
+        let K = Tensor.randn(seqLen, state.head_dim);
+        let V = Tensor.randn(seqLen, state.head_dim);
+
+        // Attention Scores: (Q @ K.T) / sqrt(d_k)
+        let KT = K.transpose();
+        let scores = Q.matmul(KT);
+        let scale = 1 / Math.sqrt(state.head_dim);
+        let scaledScores = scores.scale(scale);
+        
+        // Attention Weights: Softmax(scores)
+        let attnWeights = scaledScores.softmax();
+
+        // Output: Weights @ V
+        let headOutput = attnWeights.matmul(V);
+
+        state.perHeadData.push({
+            Q, K, V, attnWeights, headOutput
+        });
+    }
+
+    // 5. Update UI
+    setupHeadSelector();
+    renderView();
+}
+
+function setupHeadSelector() {
+    const container = document.getElementById('headSelector');
+    container.innerHTML = '';
+    for(let i=0; i<state.heads; i++) {
+        const btn = document.createElement('button');
+        btn.className = `head-btn ${i === state.currentHead ? 'active' : ''}`;
+        btn.innerText = `Head ${i}`;
+        btn.onclick = () => {
+            state.currentHead = i;
+            document.querySelectorAll('.head-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderView();
+        };
+        container.appendChild(btn);
+    }
+}
+
+// ---------------------------------------------------------
+// RENDERING LOGIC
+// ---------------------------------------------------------
+
+function getColor(val, type='heat') {
+    // Normalizing for visualization
+    if (type === 'heat') {
+        // For Attention weights (0 to 1)
+        const intensity = Math.min(255, Math.floor(val * 255));
+        return `rgb(${intensity}, ${intensity/2}, 50)`; 
+    } else {
+        // For raw tensor values (-1 to 1 mostly)
+        const v = parseFloat(val);
+        if(v > 0) return `rgba(0, 100, 255, ${Math.min(1, v)})`; // Blueish
+        return `rgba(255, 50, 50, ${Math.min(1, Math.abs(v))})`; // Reddish
+    }
+}
+
+function createMatrixDOM(tensor, label, type, rowLabels=null, colLabels=null) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'matrix-wrapper';
+    
+    if(label) {
+        const title = document.createElement('div');
+        title.className = 'matrix-label';
+        title.innerText = label;
+        wrapper.appendChild(title);
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'tensor-grid';
+    const [rows, cols] = tensor.shape;
+    
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+    tensor.data.forEach((row, rIdx) => {
+        row.forEach((val, cIdx) => {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.style.backgroundColor = getColor(val, type === 'attn' ? 'heat' : 'raw');
+            cell.dataset.row = rIdx;
+            cell.dataset.col = cIdx;
+            cell.dataset.val = Number(val).toFixed(3);
+            
+            // Interaction Events
+            cell.onmouseenter = (e) => handleHover(e, type, rIdx, cIdx, val);
+            cell.onmouseleave = handleLeave;
+            
+            grid.appendChild(cell);
+        });
+    });
+
+    wrapper.appendChild(grid);
+    return wrapper;
+}
+
+function renderView() {
+    const headData = state.perHeadData[state.currentHead];
+    const tokens = state.tokens;
+
+    // 1. Render Q, K, V
+    const qkvContainer = document.getElementById('qkvContainer');
+    qkvContainer.innerHTML = '';
+    
+    // Create elements with IDs so we can highlight them
+    const qDOM = createMatrixDOM(headData.Q, `Query (Head ${state.currentHead})`, 'raw');
+    qDOM.id = 'matrix-q';
+    qkvContainer.appendChild(qDOM);
+
+    const op1 = document.createElement('div'); op1.className='op-symbol'; op1.innerText = '×';
+    qkvContainer.appendChild(op1);
+
+    const kDOM = createMatrixDOM(headData.K.transpose(), `Key Transposed`, 'raw');
+    kDOM.id = 'matrix-k';
+    qkvContainer.appendChild(kDOM);
+
+    // 2. Render Attention Matrix
+    const attnContainer = document.getElementById('attnMatrix');
+    attnContainer.innerHTML = '';
+    const attnDOM = createMatrixDOM(headData.attnWeights, '', 'attn', tokens, tokens);
+    attnDOM.id = 'matrix-attn';
+    attnContainer.appendChild(attnDOM);
+
+    // 3. Render Output
+    const outContainer = document.getElementById('outputContainer');
+    outContainer.innerHTML = '';
+    const vDOM = createMatrixDOM(headData.V, `Value (Head ${state.currentHead})`, 'raw');
+    vDOM.id = 'matrix-v';
+    outContainer.appendChild(vDOM);
+    
+    const arrow = document.createElement('div'); arrow.className='op-symbol'; arrow.innerText = '→';
+    outContainer.appendChild(arrow);
+    
+    const resDOM = createMatrixDOM(headData.headOutput, `Head Output`, 'raw');
+    outContainer.appendChild(resDOM);
+}
+
+// ---------------------------------------------------------
+// INTERACTION & DISSECTION
+// ---------------------------------------------------------
+
+function handleHover(e, type, r, c, val) {
+    const tooltip = document.getElementById('tooltip');
+    const tokens = state.tokens;
+
+    if (type === 'attn') {
+        // User is hovering over the Attention Matrix
+        // Row r = Query Token, Col c = Key Token
+        const qToken = tokens[r] || 'pad';
+        const kToken = tokens[c] || 'pad';
+
+        tooltip.innerHTML = `
+            <code>Score: ${val}</code>
+            <b>Query:</b> "${qToken}" (Row ${r})<br>
+            <b>Key:</b> "${kToken}" (Col ${c})<br>
+            <i>How much "${qToken}" attends to "${kToken}"</i>
+        `;
+
+        // Highlight the source vectors in Q and K
+        highlightVector('matrix-q', r, 'row', 'highlight-q'); // Highlight Row r of Q
+        highlightVector('matrix-k', c, 'col', 'highlight-k'); // Highlight Col c of K^T (which is Row c of K)
+        
+        // Highlight V row corresponding to the key
+        highlightVector('matrix-v', c, 'row', 'highlight-q'); 
+    } else {
+        tooltip.innerHTML = `Value: ${val}`;
+    }
+
+    tooltip.style.display = 'block';
+    tooltip.style.left = e.pageX + 15 + 'px';
+    tooltip.style.top = e.pageY + 15 + 'px';
+}
+
+function handleLeave() {
+    document.getElementById('tooltip').style.display = 'none';
+    document.querySelectorAll('.cell').forEach(c => {
+        c.classList.remove('highlight-q', 'highlight-k', 'highlight-attn');
+    });
+}
+
+function highlightVector(matrixId, index, type, className) {
+    const wrapper = document.getElementById(matrixId);
+    if(!wrapper) return;
+    const grid = wrapper.querySelector('.tensor-grid');
+    const cells = grid.children;
+    const cols = parseInt(grid.style.gridTemplateColumns.split('(')[1]);
+    
+    // Convert flat index to grid coordinates
+    for (let i = 0; i < cells.length; i++) {
+        const r = parseInt(cells[i].dataset.row);
+        const c = parseInt(cells[i].dataset.col);
+
+        if (type === 'row' && r === index) cells[i].classList.add(className);
+        if (type === 'col' && c === index) cells[i].classList.add(className);
+    }
+}
+
+// Initial Run
+window.onload = runSimulation;
+
+</script>
+</body>
+</html>
